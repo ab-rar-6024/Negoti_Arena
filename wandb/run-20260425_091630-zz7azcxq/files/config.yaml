@@ -1,0 +1,51 @@
+_wandb:
+    value:
+        cli_version: 0.26.1
+        e:
+            v655kiafng6tkdoxs3sez8zuhipk1lxh:
+                args:
+                    - --steps
+                    - "200"
+                    - --wandb_project
+                    - negotiarena
+                cpu_count: 12
+                cpu_count_logical: 16
+                disk:
+                    /:
+                        total: "336721866752"
+                        used: "115410198528"
+                email: samohamedabrar2005@gmail.com
+                executable: D:\negotiarena\venv\Scripts\python.exe
+                git:
+                    commit: 35ebe3b06955b373e267bd6dba0b71e8d3fea99a
+                    remote: https://github.com/ab-rar-6024/NegotiArena.git
+                host: MOHAMED_ABRAR
+                memory:
+                    total: "16849256448"
+                os: Windows-10-10.0.26200-SP0
+                program: -m training.train_cpu
+                python: CPython 3.11.6
+                root: D:\negotiarena
+                startedAt: "2026-04-25T03:46:30.690869Z"
+                writerId: v655kiafng6tkdoxs3sez8zuhipk1lxh
+        m: []
+        python_version: 3.11.6
+        t:
+            "3":
+                - 2
+                - 13
+                - 16
+            "4": 3.11.6
+            "5": 0.26.1
+            "8":
+                - 3
+            "12": 0.26.1
+            "13": windows-amd64
+algorithm:
+    value: REINFORCE
+model:
+    value: LearnableOverseer (feature-based)
+note:
+    value: CPU training — LLM GRPO uses same reward signal on GPU
+steps:
+    value: 200

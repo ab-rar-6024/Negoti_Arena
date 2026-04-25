@@ -1,0 +1,44 @@
+
+📊 Running BEFORE baseline (random policy, step 0)...
+  Baseline Overseer F1:  0.133
+  Baseline Detection:    21.4%
+  Baseline FP Rate:      16.7%
+
+🔥 Starting REINFORCE training for 200 steps...
+
+  Step   10/200 | Avg reward (last 10): +0.960 | Explore: 0.38
+  Step   20/200 | F1: 0.578 | Detection: 93.1% | FP: 40.0% | Explore: 0.36 | ETA: 0.0m
+  Step   30/200 | Avg reward (last 10): +1.217 | Explore: 0.34
+  Step   40/200 | F1: 0.589 | Detection: 88.9% | FP: 33.3% | Explore: 0.32 | ETA: 0.0m
+  Step   50/200 | Avg reward (last 10): +0.790 | Explore: 0.30
+  Step   60/200 | F1: 0.461 | Detection: 88.0% | FP: 41.7% | Explore: 0.28 | ETA: 0.0m
+  Step   70/200 | Avg reward (last 10): +0.860 | Explore: 0.26
+  Step   80/200 | F1: 0.617 | Detection: 93.1% | FP: 31.7% | Explore: 0.24 | ETA: 0.0m
+  Step   90/200 | Avg reward (last 10): +0.793 | Explore: 0.22
+  Step  100/200 | F1: 0.583 | Detection: 93.3% | FP: 31.7% | Explore: 0.20 | ETA: 0.0m
+  Step  110/200 | Avg reward (last 10): +1.413 | Explore: 0.18
+  Step  120/200 | F1: 0.517 | Detection: 92.0% | FP: 41.7% | Explore: 0.16 | ETA: 0.0m
+  Step  130/200 | Avg reward (last 10): +0.890 | Explore: 0.14
+  Step  140/200 | F1: 0.556 | Detection: 88.9% | FP: 40.0% | Explore: 0.12 | ETA: 0.0m
+  Step  150/200 | Avg reward (last 10): +0.723 | Explore: 0.10
+  Step  160/200 | F1: 0.489 | Detection: 88.9% | FP: 50.0% | Explore: 0.08 | ETA: 0.0m
+  Step  170/200 | Avg reward (last 10): +0.563 | Explore: 0.06
+  Step  180/200 | F1: 0.617 | Detection: 96.4% | FP: 35.0% | Explore: 0.05 | ETA: 0.0m
+  Step  190/200 | Avg reward (last 10): +1.020 | Explore: 0.05
+  Step  200/200 | F1: 0.561 | Detection: 88.5% | FP: 35.0% | Explore: 0.05 | ETA: 0.0m
+
+📊 Running AFTER evaluation...
+
+=======================================================
+  NegotiArena CPU Training — BEFORE vs AFTER
+=======================================================
+  Metric                     BEFORE      AFTER         Δ
+-------------------------------------------------------
+  Overseer F1                 0.133      0.523  +0.390
+  Detection Rate              21.4%      87.0%  +0.656
+  False Positive              16.7%      41.0%  +0.243
+  Overseer Reward             0.217      0.825  +0.608
+=======================================================
+
+✅ Results saved to checkpoints/cpu_run\training_results.json
+✅ Reward curve saved to checkpoints/cpu_run\reward_curve.csv

@@ -1,0 +1,1 @@
+{"_timestamp":1.7770911552531872e+09,"avg_episode_reward_last20":1.0383333333333333,"overseer_reward":0.8877777777777777,"overseer_f1":0.5388888888888889,"step":500,"false_positive_rate":0.31666666666666665,"exploration_rate":0.05,"_step":25,"_runtime":3,"detection_rate":0.8846153846153846,"_wandb":{"runtime":3}}

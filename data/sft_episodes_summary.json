@@ -1,0 +1,7 @@
+{
+  "total_episodes": 400,
+  "total_records": 7323,
+  "avg_episode_reward": 0.7014986240709526,
+  "output": "data/sft_episodes.jsonl",
+  "difficulty": "medium"
+}

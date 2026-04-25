@@ -1,0 +1,32 @@
+{
+  "os":  "Windows-10-10.0.26200-SP0",
+  "python":  "CPython 3.11.6",
+  "startedAt":  "2026-04-25T03:46:30.690869Z",
+  "args":  [
+    "--steps",
+    "200",
+    "--wandb_project",
+    "negotiarena"
+  ],
+  "program":  "-m training.train_cpu",
+  "git":  {
+    "remote":  "https://github.com/ab-rar-6024/NegotiArena.git",
+    "commit":  "35ebe3b06955b373e267bd6dba0b71e8d3fea99a"
+  },
+  "email":  "samohamedabrar2005@gmail.com",
+  "root":  "D:\\negotiarena",
+  "host":  "MOHAMED_ABRAR",
+  "executable":  "D:\\negotiarena\\venv\\Scripts\\python.exe",
+  "cpu_count":  12,
+  "cpu_count_logical":  16,
+  "disk":  {
+    "/":  {
+      "total":  "336721866752",
+      "used":  "115410198528"
+    }
+  },
+  "memory":  {
+    "total":  "16849256448"
+  },
+  "writerId":  "v655kiafng6tkdoxs3sez8zuhipk1lxh"
+}

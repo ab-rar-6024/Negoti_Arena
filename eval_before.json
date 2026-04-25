@@ -1,0 +1,15 @@
+{
+  "before": {
+    "n_episodes": 50,
+    "mean_overseer_f1": 0.14666666666666664,
+    "std_overseer_f1": 0.27616420236277306,
+    "mean_deal_quality": 0.3457429654759529,
+    "mean_gini": 0.6646810717052801,
+    "coalition_detection_rate": 0.22916666666666666,
+    "false_positive_rate": 0.12,
+    "deal_rate": 0.34,
+    "mean_turns_to_deal": 15.823529411764707,
+    "mean_overseer_reward": 0.0,
+    "mean_negotiator_reward": 0.0
+  }
+}
