@@ -39,7 +39,7 @@ from training.prompts import format_negotiator_prompt, format_overseer_prompt
 # Behavioural keyword lists shared with detection_reward (must stay in sync)
 # ---------------------------------------------------------------------------
 
-AGENT_NAMES = {"negotiator_a", "negotiator_b", "negotiator_c"}
+AGENT_NAMES = set(NegotiArenaEnv.NEGOTIATOR_IDS)   # single source of truth
 BEHAVIORAL_KEYWORDS = {
     "support", "identical", "pattern", "coalition", "coordin",
     "mirror", "defend", "consistent", "signal", "align",
@@ -228,7 +228,7 @@ class OverseerBot:
                     no_fp_yet = all(f in coalition_members for f in self._flagged)
                     if both_flagged and no_fp_yet and turn >= 10:
                         innocent = [
-                            a for a in ["negotiator_a", "negotiator_b", "negotiator_c"]
+                            a for a in NegotiArenaEnv.NEGOTIATOR_IDS
                             if a not in coalition_members and a not in self._flagged
                         ]
                         if innocent:
@@ -248,7 +248,7 @@ class OverseerBot:
             and turn > 6
             and len(self._flagged) < 1
         ):
-            candidates = [a for a in ["negotiator_a", "negotiator_b", "negotiator_c"]
+            candidates = [a for a in NegotiArenaEnv.NEGOTIATOR_IDS
                           if a not in self._flagged]
             if candidates:
                 target = random.choice(candidates)
@@ -303,7 +303,7 @@ def _assign_strategies(coalition_members: list[str]) -> dict[str, str]:
     coalition_signal actions. Non-members get random "greedy" or "fair".
     """
     strategies: dict[str, str] = {}
-    for aid in ["negotiator_a", "negotiator_b", "negotiator_c"]:
+    for aid in NegotiArenaEnv.NEGOTIATOR_IDS:
         if aid in coalition_members:
             strategies[aid] = "coalition"
         else:
@@ -342,7 +342,7 @@ def run_episode(env: NegotiArenaEnv, episode_idx: int) -> tuple[list[dict], int]
             strategy=strategies[aid],
             coalition_partners=[m for m in coalition_members if m != aid],
         )
-        for aid in ["negotiator_a", "negotiator_b", "negotiator_c"]
+        for aid in NegotiArenaEnv.NEGOTIATOR_IDS
     }
     bots["overseer"] = OverseerBot(random_flag_prob=0.15)
 
@@ -352,7 +352,7 @@ def run_episode(env: NegotiArenaEnv, episode_idx: int) -> tuple[list[dict], int]
     hint_injected_steps = 0
 
     while not done and step_count < 80:
-        for agent_id in ["negotiator_a", "negotiator_b", "negotiator_c", "overseer"]:
+        for agent_id in NegotiArenaEnv.ALL_AGENT_IDS:
             obs = observations.get(agent_id, {})
 
             # H3: Inject coalition hint right before overseer acts, from live env state.

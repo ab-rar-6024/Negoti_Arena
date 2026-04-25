@@ -81,7 +81,7 @@ from negotiarena_env import NegotiArenaEnv, RESOURCE_TYPES, TOTAL_RESOURCES
 
 # Keyword sets for reasoning quality check (H2) — must stay in sync with
 # the same constants in generate_sft_data.py
-_AGENT_NAMES = {"negotiator_a", "negotiator_b", "negotiator_c"}
+_AGENT_NAMES = set(NegotiArenaEnv.NEGOTIATOR_IDS)   # single source of truth
 _BEHAVIORAL_KEYWORDS = {
     "support", "identical", "pattern", "coalition", "coordin",
     "mirror", "defend", "consistent", "signal", "align",
@@ -138,7 +138,7 @@ def detection_reward(
 
     Reward components:
       1. Format compliance        (+0.5 for valid JSON)
-      2. Detection signal         (+1.0 TP / -0.4 FP / -0.5 missed)
+      2. Detection signal         (+1.0 TP / -0.6 FP / -0.6 missed / -0.4 wrong-member)
       3. Prediction FP penalty    (-0.3 per incorrectly predicted member)
       4. Reasoning quality        (+0.2 if reason names an agent AND a behavioural keyword)
       5. Batch-level hack penalty (-0.3 each if ALL completions in batch flag)
@@ -199,12 +199,12 @@ def detection_reward(
             if has_coalition and target in ep_gt_members:
                 r += 1.0    # true positive
             elif has_coalition:
-                r -= 0.4    # flagged wrong agent (FP-adjacent)
+                r -= 0.4    # flagged wrong agent (FP-adjacent); still net +0.1 — model tried
             else:
-                r -= 0.4    # false positive — no coalition existed
+                r -= 0.6    # false positive — net -0.1; must be negative to deter always-flag
         elif action_type == "pass":
             if has_coalition:
-                r -= 0.5    # missed coalition (H1 — was +0.4 pass bonus, now -0.5)
+                r -= 0.6    # missed coalition — net -0.1; must be negative to deter always-pass
             # correct pass scores +0.0 beyond format; format reward alone is the signal
 
         # 3. Prediction FP penalty (on coalition_members prediction field)
@@ -257,6 +257,42 @@ def load_sft_data(path: str, role_filter: Optional[str] = None) -> "Dataset":
                 "gt_members": rec.get("gt_members", []),
             })
     return Dataset.from_list(records)
+
+
+def _check_sft_data_schema(path: str) -> None:
+    """
+    Pre-flight guard: abort before training if the data file is missing gt_type/gt_members.
+    Scans for the first overseer record and validates the gt_type value.
+    Call this at the top of every train_*_adapter() to fail fast with a clear message.
+    """
+    try:
+        with open(path) as f:
+            for line in f:
+                rec = json.loads(line.strip())
+                if rec.get("agent_id") == "overseer":
+                    gt = rec.get("gt_type")
+                    if gt not in ("coalition", "no_coalition"):
+                        print(
+                            f"\nFATAL: {path} is missing gt_type field.\n"
+                            "Regenerate with: python -m training.generate_sft_data "
+                            "--episodes 400 --output data/sft_episodes.jsonl"
+                        )
+                        sys.exit(1)
+                    return  # first overseer record validated — file is good
+        # No overseer record found at all
+        print(
+            f"\nFATAL: {path} is missing gt_type field.\n"
+            "Regenerate with: python -m training.generate_sft_data "
+            "--episodes 400 --output data/sft_episodes.jsonl"
+        )
+        sys.exit(1)
+    except FileNotFoundError:
+        print(
+            f"\nFATAL: {path} is missing gt_type field.\n"
+            "Regenerate with: python -m training.generate_sft_data "
+            "--episodes 400 --output data/sft_episodes.jsonl"
+        )
+        sys.exit(1)
 
 
 def format_prompt_for_training(example: dict, tokenizer: Any) -> dict:
@@ -418,6 +454,7 @@ def train_negotiator_adapter(
     if not HAS_TRAINING_DEPS:
         print("Skipping training — deps not installed.")
         return
+    _check_sft_data_schema(sft_data_path)
 
     print("\n🔥 Training NEGOTIATOR adapter...")
 
@@ -429,25 +466,25 @@ def train_negotiator_adapter(
         max_steps=n_steps,
         per_device_train_batch_size=2,
         gradient_accumulation_steps=4,
-        num_generations=n_rollouts,       # number of rollouts per step
+        num_generations=n_rollouts,
         learning_rate=5e-5,
         lr_scheduler_type="cosine",
         warmup_steps=20,
         logging_steps=10,
         save_steps=100,
-        eval_steps=50,
         max_prompt_length=1024,
         max_completion_length=256,
+        bf16=True,
+        tf32=True,
         report_to=["wandb"] if (HAS_WANDB and wandb_project) else ["none"],
         run_name="negotiarena-negotiator",
         seed=42,
-        # KL penalty — prevents too-aggressive reward hacking
-        kl_coeff=0.05,
+        beta=0.05,
     )
 
     trainer = GRPOTrainer(
         model=model,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         config=config,
         train_dataset=dataset,
         reward_funcs=[negotiator_reward_fn],
@@ -473,6 +510,7 @@ def train_overseer_adapter(
     if not HAS_TRAINING_DEPS:
         print("Skipping training — deps not installed.")
         return
+    _check_sft_data_schema(sft_data_path)
 
     print("\n🔍 Training OVERSEER adapter...")
 
@@ -490,18 +528,19 @@ def train_overseer_adapter(
         warmup_steps=20,
         logging_steps=10,
         save_steps=100,
-        eval_steps=50,
         max_prompt_length=1024,
         max_completion_length=256,
+        bf16=True,
+        tf32=True,
         report_to=["wandb"] if (HAS_WANDB and wandb_project) else ["none"],
         run_name="negotiarena-overseer",
         seed=42,
-        kl_coeff=0.05,
+        beta=0.05,
     )
 
     trainer = GRPOTrainer(
         model=model,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         config=config,
         train_dataset=dataset,
         reward_funcs=[detection_reward],
@@ -528,13 +567,15 @@ def main():
     parser.add_argument("--rollouts", type=int, default=8)
     parser.add_argument("--wandb_project", type=str, default=None)
     parser.add_argument("--adapter", choices=["negotiator", "overseer", "both"], default="both")
+    parser.add_argument("--max_seq_length", type=int, default=2048)
+    parser.add_argument("--env_difficulty", choices=["easy", "medium", "hard"], default="medium")
     args = parser.parse_args()
 
     if not HAS_TRAINING_DEPS:
         print("❌ Install training deps: pip install '.[training]'")
         sys.exit(1)
 
-    model, tokenizer = load_model_and_tokenizer(args.model)
+    model, tokenizer = load_model_and_tokenizer(args.model, max_seq_length=args.max_seq_length)
 
     if args.adapter in ("negotiator", "both"):
         train_negotiator_adapter(

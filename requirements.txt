@@ -1,16 +1,11 @@
-# NegotiArena Core Requirements
-# For full training: pip install '.[training]'
-# For demo: pip install '.[demo]'
-
-# Server / Environment
-fastapi>=0.110.0
-uvicorn[standard]>=0.29.0
-pydantic>=2.6.0
-numpy>=1.26.0
-scipy>=1.12.0
-httpx>=0.27.0
-rich>=13.7.0
-python-dotenv>=1.0.0
-
-# OpenEnv interface
-openenv>=0.1.0
+torch>=2.0.0
+trl==0.24.0
+transformers==4.57.2
+datasets>=2.0.0
+peft>=0.18.0
+accelerate>=1.0.0
+bitsandbytes>=0.41.0
+numpy>=1.24.0
+wandb
+mergekit
+unsloth @ git+https://github.com/unslothai/unsloth.git
