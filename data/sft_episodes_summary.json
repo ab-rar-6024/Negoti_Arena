@@ -1,7 +1,12 @@
 {
   "total_episodes": 400,
-  "total_records": 7323,
-  "avg_episode_reward": 0.7014986240709526,
+  "total_records": 7533,
+  "coalition_episodes": 285,
+  "coalition_rate": 0.7125,
+  "overseer_records": 1827,
+  "overseer_nonzero_reward_pct": 100.0,
+  "hint_injection_rate": 0.8916256157635467,
+  "avg_episode_reward": 0.34733557122879577,
   "output": "data/sft_episodes.jsonl",
   "difficulty": "medium"
 }

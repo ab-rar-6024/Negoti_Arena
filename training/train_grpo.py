@@ -295,15 +295,20 @@ def _check_sft_data_schema(path: str) -> None:
         sys.exit(1)
 
 
-def format_prompt_for_training(example: dict, tokenizer: Any) -> dict:
-    """Format prompt+response into token IDs for TRL."""
-    messages = example["prompt"] + [
-        {"role": "assistant", "content": example["response"]}
-    ]
+def format_prompt_for_grpo(example: dict, tokenizer: Any) -> dict:
+    """Convert list-of-dicts prompt to a plain string for GRPOTrainer.
+
+    GRPOTrainer requires the 'prompt' column to be a plain string — it generates
+    its own completions from that string and scores them via the reward function.
+    The assistant response from the SFT data is intentionally NOT included here;
+    GRPO learns from generated rollouts, not from the supervised demonstrations.
+    """
     text = tokenizer.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=False
+        example["prompt"],       # list of [system, user] dicts from the JSONL
+        tokenize=False,
+        add_generation_prompt=True,   # appends the assistant turn opener token(s)
     )
-    return {"text": text}
+    return {"prompt": text}          # overwrites the list-of-dicts with a plain string
 
 
 # ---------------------------------------------------------------------------
@@ -459,7 +464,11 @@ def train_negotiator_adapter(
     print("\n🔥 Training NEGOTIATOR adapter...")
 
     dataset = load_sft_data(sft_data_path, role_filter="negotiator")
-    dataset = dataset.map(lambda ex: format_prompt_for_training(ex, tokenizer))
+    # Convert list-of-dicts prompt → plain string; drop columns GRPO doesn't need.
+    dataset = dataset.map(lambda ex: format_prompt_for_grpo(ex, tokenizer))
+    dataset = dataset.select_columns(
+        [c for c in dataset.column_names if c in {"prompt", "gt_type", "gt_members"}]
+    )
 
     config = GRPOConfig(
         output_dir=os.path.join(output_dir, "negotiator"),
@@ -515,7 +524,11 @@ def train_overseer_adapter(
     print("\n🔍 Training OVERSEER adapter...")
 
     dataset = load_sft_data(sft_data_path, role_filter="overseer")
-    dataset = dataset.map(lambda ex: format_prompt_for_training(ex, tokenizer))
+    # Convert list-of-dicts prompt → plain string; keep gt_type/gt_members for detection_reward.
+    dataset = dataset.map(lambda ex: format_prompt_for_grpo(ex, tokenizer))
+    dataset = dataset.select_columns(
+        [c for c in dataset.column_names if c in {"prompt", "gt_type", "gt_members"}]
+    )
 
     config = GRPOConfig(
         output_dir=os.path.join(output_dir, "overseer"),
