@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from pydantic import BaseModel
 from typing import Optional
 import json
@@ -24,7 +24,99 @@ DATA_PATH = os.path.join(DATA_DIR, "dashboard_data.json")
 INDEX_PATH = os.path.join(BASE_DIR, "index.html")
 
 # =====================================================
-# FALLBACK DATA (if dashboard_data.json missing)
+# BLOG CONTENT
+# =====================================================
+
+BLOG_HTML = """
+<div style="max-width:1000px;margin:40px auto;padding:30px;color:white;font-family:Arial;">
+    <h1 style="font-size:42px;margin-bottom:20px;">
+        NegotiArena Blog
+    </h1>
+
+    <h2 style="font-size:30px;margin-top:30px;">
+        Why We Built NegotiArena
+    </h2>
+
+    <p style="font-size:18px;line-height:1.8;">
+        NegotiArena is designed to detect hidden coalitions in
+        multi-agent negotiation systems where agents secretly
+        collaborate for unfair advantage.
+    </p>
+
+    <p style="font-size:18px;line-height:1.8;">
+        In real-world enterprise systems, supply chains, and
+        workflow automation platforms, multiple agents may appear
+        independent while secretly coordinating actions.
+    </p>
+
+    <p style="font-size:18px;line-height:1.8;">
+        Traditional reward systems often fail because models learn
+        to exploit loopholes instead of behaving honestly.
+    </p>
+
+    <h2 style="font-size:30px;margin-top:30px;">
+        Our Core Innovation
+    </h2>
+
+    <p style="font-size:18px;line-height:1.8;">
+        We combine:
+    </p>
+
+    <ul style="font-size:18px;line-height:1.8;">
+        <li>GRPO (Group Relative Policy Optimization)</li>
+        <li>RLVR (Reinforcement Learning from Verifiable Rewards)</li>
+        <li>Overseer Detection Models</li>
+        <li>Reward Hacking Prevention</li>
+    </ul>
+
+    <p style="font-size:18px;line-height:1.8;">
+        Instead of rewarding only outcomes, we verify negotiation
+        integrity itself.
+    </p>
+
+    <h2 style="font-size:30px;margin-top:30px;">
+        How It Helps
+    </h2>
+
+    <p style="font-size:18px;line-height:1.8;">
+        This prevents:
+    </p>
+
+    <ul style="font-size:18px;line-height:1.8;">
+        <li>Hidden collusion</li>
+        <li>Always-pass exploits</li>
+        <li>Always-flag exploits</li>
+        <li>Reward hacking behaviors</li>
+    </ul>
+
+    <h2 style="font-size:30px;margin-top:30px;">
+        Future Applications
+    </h2>
+
+    <p style="font-size:18px;line-height:1.8;">
+        Future versions of NegotiArena can be applied to:
+    </p>
+
+    <ul style="font-size:18px;line-height:1.8;">
+        <li>Enterprise workflow auditing</li>
+        <li>Supply-chain disruption detection</li>
+        <li>Fraud prevention systems</li>
+        <li>Autonomous agent governance</li>
+    </ul>
+
+    <h2 style="font-size:30px;margin-top:30px;">
+        Final Goal
+    </h2>
+
+    <p style="font-size:18px;line-height:1.8;">
+        Build trustworthy multi-agent systems where cooperation is
+        transparent, fair, and verifiable.
+    </p>
+</div>
+"""
+
+# =====================================================
+# FALLBACK DATA
 # =====================================================
 
 FALLBACK_DATA = {
@@ -119,16 +211,11 @@ FALLBACK_DATA = {
 # =====================================================
 
 def load_dashboard_data():
-    """
-    Safely load dashboard data.
-    If file missing, automatically use fallback data.
-    """
-
     if not os.path.exists(DATA_DIR):
         os.makedirs(DATA_DIR, exist_ok=True)
 
     if not os.path.exists(DATA_PATH):
-        print(f"dashboard_data.json not found. Using fallback data.")
+        print("dashboard_data.json not found. Using fallback data.")
 
         with open(DATA_PATH, "w", encoding="utf-8") as f:
             json.dump(FALLBACK_DATA, f, indent=4)
@@ -149,10 +236,6 @@ DASHBOARD_DATA = load_dashboard_data()
 
 # =====================================================
 # STATIC FILES
-# IMPORTANT:
-# index.html should use:
-# /static/style.css
-# /static/script.js
 # =====================================================
 
 app.mount(
@@ -174,6 +257,27 @@ def root():
         )
 
     return FileResponse(INDEX_PATH)
+
+# =====================================================
+# BLOG PAGE
+# =====================================================
+
+@app.get("/blog", response_class=HTMLResponse)
+def blog():
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>NegotiArena Blog</title>
+        <link rel="stylesheet" href="/static/style.css">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="background:#0B1120;">
+        {BLOG_HTML}
+    </body>
+    </html>
+    """
 
 # =====================================================
 # METRICS
@@ -204,9 +308,7 @@ def get_metrics():
 
 @app.get("/api/training_results")
 def get_training_results():
-    return JSONResponse(
-        content=DASHBOARD_DATA["training"]
-    )
+    return JSONResponse(content=DASHBOARD_DATA["training"])
 
 # =====================================================
 # PERFORMANCE
@@ -214,9 +316,7 @@ def get_training_results():
 
 @app.get("/api/performance")
 def get_performance():
-    return JSONResponse(
-        content=DASHBOARD_DATA["performance"]
-    )
+    return JSONResponse(content=DASHBOARD_DATA["performance"])
 
 # =====================================================
 # DATASET INFO
@@ -224,9 +324,7 @@ def get_performance():
 
 @app.get("/api/dataset")
 def get_dataset():
-    return JSONResponse(
-        content=DASHBOARD_DATA["dataset"]
-    )
+    return JSONResponse(content=DASHBOARD_DATA["dataset"])
 
 # =====================================================
 # REWARD COMPONENTS
@@ -234,9 +332,7 @@ def get_dataset():
 
 @app.get("/api/reward_components")
 def get_reward_components():
-    return JSONResponse(
-        content=DASHBOARD_DATA["reward_components"]
-    )
+    return JSONResponse(content=DASHBOARD_DATA["reward_components"])
 
 # =====================================================
 # REWARD HACKING
@@ -244,171 +340,7 @@ def get_reward_components():
 
 @app.get("/api/reward_hacking")
 def get_reward_hacking():
-    return JSONResponse(
-        content=DASHBOARD_DATA["reward_hacking"]
-    )
-
-# =====================================================
-# SIMULATION
-# =====================================================
-
-class SimRequest(BaseModel):
-    difficulty: str = "medium"
-    episode_id: Optional[str] = None
-    custom_input: Optional[dict] = None
-
-
-DIFF_CONFIG = {
-    "easy": {
-        "n_agents": 3,
-        "coalition_prob": 0.30,
-        "noise": 0.04
-    },
-    "medium": {
-        "n_agents": 3,
-        "coalition_prob": 0.60,
-        "noise": 0.08
-    },
-    "hard": {
-        "n_agents": 4,
-        "coalition_prob": 0.85,
-        "noise": 0.12
-    }
-}
-
-
-@app.post("/api/simulation")
-def run_simulation(req: SimRequest):
-    cfg = DIFF_CONFIG.get(
-        req.difficulty.lower(),
-        DIFF_CONFIG["medium"]
-    )
-
-    cache = DASHBOARD_DATA["simulation_cache"]
-
-    if not cache:
-        raise HTTPException(
-            status_code=404,
-            detail="No simulation cache found"
-        )
-
-    if req.episode_id:
-        episode = next(
-            (e for e in cache if e["id"] == req.episode_id),
-            cache[0]
-        )
-    else:
-        episode = random.choice(cache)
-
-    noise = cfg["noise"]
-
-    base_reward = episode.get("reward", 0.0)
-
-    sim_reward = round(
-        max(
-            -1.0,
-            min(
-                1.0,
-                base_reward + random.uniform(-noise, noise)
-            )
-        ),
-        4
-    )
-
-    output_type = episode["overseer_output"].get("type", "pass")
-
-    if episode["gt_type"] == "coalition":
-        tp = 1 if output_type == "overseer_flag" else 0
-        fp = 0
-        fn = 1 - tp
-    else:
-        tp = 0
-        fp = 1 if output_type == "overseer_flag" else 0
-        fn = 0
-
-    precision = round(tp / (tp + fp + 1e-9), 3)
-    recall = round(tp / (tp + fn + 1e-9), 3)
-
-    f1 = round(
-        2 * precision * recall /
-        (precision + recall + 1e-9),
-        3
-    )
-
-    return {
-        "success": True,
-        "difficulty": req.difficulty,
-        "episode_id": episode["id"],
-        "gt_type": episode["gt_type"],
-        "gt_members": episode["gt_members"],
-        "transcript": episode["transcript"],
-        "overseer_output": episode["overseer_output"],
-        "reward": sim_reward,
-        "allocation": episode["allocation"],
-        "metrics": {
-            "tp": tp,
-            "fp": fp,
-            "fn": fn,
-            "precision": precision,
-            "recall": recall,
-            "f1": f1
-        },
-        "coalition_probability": cfg["coalition_prob"]
-    }
-
-# =====================================================
-# INFERENCE (Mock Checkpoint)
-# =====================================================
-
-class InferRequest(BaseModel):
-    checkpoint: str = "grpo"
-    input_text: Optional[str] = None
-
-
-@app.post("/api/inference")
-def run_inference(req: InferRequest):
-    examples = DASHBOARD_DATA["simulation_cache"]
-
-    if not examples:
-        raise HTTPException(
-            status_code=404,
-            detail="No example data available"
-        )
-
-    episode = random.choice(examples)
-
-    base_scores = {
-        "grpo": 0.755,
-        "rlvr": 0.800
-    }
-
-    base = base_scores.get(
-        req.checkpoint.lower(),
-        0.755
-    )
-
-    reward = round(
-        base + random.uniform(-0.05, 0.05),
-        4
-    )
-
-    output_type = episode["overseer_output"].get("type", "pass")
-
-    return {
-        "success": True,
-        "checkpoint": req.checkpoint,
-        "checkpoint_status": "loaded",
-        "input_preview": str(
-            episode["transcript"]
-        )[:200],
-        "output": episode["overseer_output"],
-        "reward_score": reward,
-        "verdict": (
-            "Coalition Detected"
-            if output_type == "overseer_flag"
-            else "No Coalition - Pass"
-        )
-    }
+    return JSONResponse(content=DASHBOARD_DATA["reward_hacking"])
 
 # =====================================================
 # MAIN
@@ -416,8 +348,8 @@ def run_inference(req: InferRequest):
 
 if __name__ == "__main__":
     uvicorn.run(
-        "app:app",
+        app,
         host="0.0.0.0",
         port=7860,
-        reload=True
+        reload=False
     )
