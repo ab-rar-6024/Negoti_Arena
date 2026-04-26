@@ -1,15 +1,9 @@
 /* ══════════════════════════════════════════
-   NegotiArena — Complete Script
-   Fixes:
-   - Speedometer gap removed (proper height/margin)
-   - Left-side transcript gap removed
-   - Difficulty changes produce different data per mode
-   - Same button twice always gives different data
-   - Post-sim training charts removed from Live Demo page
-   - Analytics page only shows training charts
+   NegotiArena — Complete Interactive Script
+   With Smooth Animations & Transitions
 ══════════════════════════════════════════ */
 
-/* ════════════ REAL GRPO DATA ════════════ */
+/* ════════════ REAL GRPO TRAINING DATA ════════════ */
 const GRPO_DATA = [
   {step:5,reward:0.15,reward_std:0.028,kl:0.000017,loss:0.0},
   {step:10,reward:0.1225,reward_std:0.049,kl:0.000022,loss:0.0},
@@ -66,14 +60,7 @@ const PERFORMANCE = {
   f1:[0.33,0.51,0.69,0.80]
 };
 
-/* ════════════ DIFFICULTY CONFIG ════════════
-   Each difficulty has its own data profile:
-   - different agents count
-   - different coalition probability
-   - different noise (affects allocation spread)
-   - different reward ranges
-   - different GRPO step pools (from real data)
-*/
+/* ════════════ DIFFICULTY CONFIGURATIONS ════════════ */
 const DIFF = {
   easy: {
     agents: 2,
@@ -82,8 +69,8 @@ const DIFF = {
     noise: 0.04,
     label: 'Easy',
     color: '#34D399',
-    rewardBoost: 0.15,        // easy mode = higher rewards (model is more confident)
-    grpoStepPool: [0,1,2,3,4,5,6,7,8,9],   // early steps (less trained, easier tasks)
+    rewardBoost: 0.15,
+    grpoStepPool: [0,1,2,3,4,5,6,7,8,9],
     confidenceHigh: [0.62, 0.85],
     confidenceLow:  [0.02, 0.18],
   },
@@ -106,7 +93,7 @@ const DIFF = {
     noise: 0.13,
     label: 'Hard',
     color: '#F87171',
-    rewardBoost: -0.10,       // hard mode = noisier, lower rewards
+    rewardBoost: -0.10,
     grpoStepPool: [25,26,27,28,29,30,31,32,33,34,35,36,37,38,39],
     confidenceHigh: [0.74, 0.97],
     confidenceLow:  [0.06, 0.30],
@@ -154,11 +141,8 @@ const TEMPLATES_OBJECTION = [
 /* ════════════ EPISODE GENERATION ════════════ */
 function generateEpisode(diffKey) {
   const cfg = DIFF[diffKey];
-
-  // Always generate fresh randomness — guarantees different data on repeat clicks
   const seed = Math.random();
   const isCoalition = seed < cfg.coalitionProb;
-
   const agents = [...cfg.agentNames];
   const totalUnits = 80 + agents.length * 10;
 
@@ -173,19 +157,16 @@ function generateEpisode(diffKey) {
   const transcript = buildTranscript(agents, coalitionPair, totalUnits, isCoalition, cfg);
   const allocation = computeAllocation(agents, coalitionPair, totalUnits, isCoalition, cfg);
 
-  // Pick a GRPO step from this difficulty's pool
   const pool = cfg.grpoStepPool;
   const stepIdx = pool[Math.floor(Math.random() * pool.length)];
   const baseStep = GRPO_DATA[stepIdx];
 
-  // Confidence varies by difficulty
   const [cHiMin, cHiMax] = cfg.confidenceHigh;
   const [cLoMin, cLoMax] = cfg.confidenceLow;
   const confidence = isCoalition
     ? cHiMin + Math.random() * (cHiMax - cHiMin)
     : cLoMin + Math.random() * (cLoMax - cLoMin);
 
-  // Reward varies by difficulty
   const rawReward = baseStep.reward + cfg.rewardBoost;
   const reward = isCoalition
     ? Math.max(0.2, Math.min(1.0, rawReward + 0.25 + (Math.random() * 0.2 - 0.1)))
@@ -221,7 +202,6 @@ function generateEpisode(diffKey) {
 
 function buildTranscript(agents, coalitionPair, totalUnits, isCoalition, cfg) {
   const turns = [];
-  // Vary turn count so repeated runs feel different
   const numTurns = 3 + Math.floor(Math.random() * 3);
   const perAgent = Math.floor(totalUnits / agents.length);
   const noiseFactor = cfg.noise * 100;
@@ -231,7 +211,6 @@ function buildTranscript(agents, coalitionPair, totalUnits, isCoalition, cfg) {
     const isInCoalition = coalitionPair.includes(agent);
     const partner = coalitionPair.find(a => a !== agent);
     let msg, resource;
-
     const noiseOffset = Math.floor((Math.random() - 0.5) * noiseFactor);
 
     if (isCoalition && isInCoalition && partner && t > 0) {
@@ -250,7 +229,6 @@ function buildTranscript(agents, coalitionPair, totalUnits, isCoalition, cfg) {
       msg = tmpl(agent, Math.max(8, units));
       resource = Math.max(8, units);
     }
-
     turns.push({ turn: t + 1, agent, message: msg, resource });
   }
   return turns;
@@ -305,14 +283,14 @@ function ax(title, color = '#64748B') {
   };
 }
 
-/* ════════════ STATE ════════════ */
+/* ════════════ STATE MANAGEMENT ════════════ */
 let currentDiff = 'medium';
 let simRunning = false;
 let lastEpisode = null;
 let simEverRun = false;
 let runCount = 0;
 
-/* ════════════ SIDEBAR NAV ════════════ */
+/* ════════════ NAVIGATION ════════════ */
 document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -331,7 +309,6 @@ document.querySelectorAll('.nav-item').forEach(btn => {
   });
 });
 
-// Analytics gate button
 document.getElementById('goto-sim-btn').addEventListener('click', () => {
   document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -374,10 +351,7 @@ function runSim(replay = false) {
   if (simRunning) return;
   simRunning = true;
 
-  // Hide output while loading
   document.getElementById('sim-output').style.display = 'none';
-
-  // Animate progress bar
   let prog = 0;
   const fill = document.getElementById('sim-bar-fill');
   fill.style.width = '0%';
@@ -387,7 +361,6 @@ function runSim(replay = false) {
     if (prog >= 85) clearInterval(interval);
   }, 35);
 
-  // Always generate fresh episode (never re-use for new run, even same difficulty)
   const ep = (replay && lastEpisode) ? lastEpisode : generateEpisode(currentDiff);
 
   setTimeout(() => {
@@ -407,7 +380,7 @@ function runSim(replay = false) {
   }, 900);
 }
 
-/* ════════════ RENDER SIM OUTPUT ════════════ */
+/* ════════════ RENDER SIM OUTPUT WITH ANIMATIONS ════════════ */
 function renderSimOutput(ep) {
   const output = document.getElementById('sim-output');
   output.style.display = 'block';
@@ -415,12 +388,10 @@ function renderSimOutput(ep) {
   output.style.transform = 'translateY(8px)';
   output.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
 
-  // Set badge
   const badge = document.getElementById('ep-type-badge');
   badge.textContent = ep.gt_type === 'coalition' ? 'Coalition' : 'No Coalition';
   badge.className = 'badge-type badge-' + ep.gt_type;
 
-  // Clear previous content
   document.getElementById('transcript-body').innerHTML = '';
   document.getElementById('overseer-json').textContent = '';
   document.getElementById('detection-status').innerHTML = '';
@@ -434,23 +405,17 @@ function renderSimOutput(ep) {
     output.style.transform = 'translateY(0)';
   });
 
-  // Step 1: animate transcript turns
   animateTranscript(ep.transcript, () => {
-    // Step 2: animate JSON
     animateJSON(ep.overseer_output, () => {
-      // Step 3: render charts
       renderGauge(ep);
       renderAllocation(ep);
-      // Step 4: animate detection status rows
       animateDetectionStatus(ep, () => {
-        // Step 5: reveal verdict with delay
         renderVerdict(ep);
       });
     });
   });
 }
 
-/* ════════════ TRANSCRIPT ANIMATION ════════════ */
 function animateTranscript(turns, onDone) {
   const container = document.getElementById('transcript-body');
   let idx = 0;
@@ -473,19 +438,15 @@ function animateTranscript(turns, onDone) {
     container.appendChild(el);
     container.scrollTop = container.scrollHeight;
 
-    // Trigger entrance animation
     requestAnimationFrame(() => {
       requestAnimationFrame(() => { el.classList.add('visible'); });
     });
 
-    // Typewriter for message
-    const msgEl = el.querySelector('.turn-msg');
-    typewrite(msgEl, t.message, 16, () => {
+    typewrite(el.querySelector('.turn-msg'), t.message, 18, () => {
       idx++;
-      setTimeout(nextTurn, 250);
+      setTimeout(nextTurn, 200);
     });
   }
-
   nextTurn();
 }
 
@@ -499,7 +460,6 @@ function typewrite(el, text, speed, onDone) {
   }, speed);
 }
 
-/* ════════════ JSON ANIMATION ════════════ */
 function animateJSON(obj, onDone) {
   const el = document.getElementById('overseer-json');
   const text = JSON.stringify(obj, null, 2);
@@ -512,12 +472,11 @@ function animateJSON(obj, onDone) {
     if (i >= text.length) {
       el.textContent = text;
       clearInterval(timer);
-      setTimeout(onDone, 180);
+      setTimeout(onDone, 150);
     }
-  }, 7);
+  }, 8);
 }
 
-/* ════════════ GAUGE CHART ════════════ */
 function renderGauge(ep) {
   const confidence = ep.overseer_output.confidence;
   const pct = +(confidence * 100).toFixed(1);
@@ -528,27 +487,19 @@ function renderGauge(ep) {
     mode: 'gauge+number',
     value: pct,
     gauge: {
-      axis: {
-        range: [0, 100],
-        tickcolor: '#64748B',
-        tickfont: { size: 9 },
-        tickvals: [0, 25, 50, 75, 100],
-      },
+      axis: { range: [0, 100], tickcolor: '#64748B', tickfont: { size: 9 }, tickvals: [0, 25, 50, 75, 100] },
       bar: { color, thickness: 0.25 },
       bgcolor: 'rgba(255,255,255,0.03)',
       borderwidth: 1,
       bordercolor: 'rgba(255,255,255,0.08)',
       steps: [
-        { range: [0,  30], color: 'rgba(52,211,153,0.08)' },
+        { range: [0, 30], color: 'rgba(52,211,153,0.08)' },
         { range: [30, 70], color: 'rgba(251,191,36,0.08)' },
         { range: [70,100], color: 'rgba(248,113,113,0.08)' },
       ],
       threshold: { line: { color: 'rgba(255,255,255,0.25)', width: 2 }, thickness: 0.75, value: 50 },
     },
-    number: {
-      suffix: '%',
-      font: { family: 'JetBrains Mono', color: '#F1F5F9', size: 30 },
-    },
+    number: { suffix: '%', font: { family: 'JetBrains Mono', color: '#F1F5F9', size: 28 } },
   }], {
     paper_bgcolor: 'rgba(0,0,0,0)',
     margin: { t: 10, r: 10, b: 0, l: 10 },
@@ -557,7 +508,6 @@ function renderGauge(ep) {
   }, PLY_CFG);
 }
 
-/* ════════════ ALLOCATION CHART ════════════ */
 function renderAllocation(ep) {
   const colors = ['#60A5FA','#22D3EE','#34D399','#FBBF24','#A78BFA'];
   Plotly.newPlot('chart-allocation', [{
@@ -571,23 +521,13 @@ function renderAllocation(ep) {
     plot_bgcolor: 'rgba(255,255,255,0.02)',
     font: { family: 'JetBrains Mono', color: '#64748B', size: 10 },
     margin: { t: 6, r: 10, b: 36, l: 36 },
-    xaxis: {
-      gridcolor: 'rgba(255,255,255,0.05)',
-      color: '#64748B',
-      tickfont: { size: 9 },
-      tickangle: ep.agents.length > 3 ? -30 : 0,
-    },
-    yaxis: {
-      gridcolor: 'rgba(255,255,255,0.05)',
-      color: '#64748B',
-      title: { text: 'Units', font: { size: 10 } },
-    },
+    xaxis: { gridcolor: 'rgba(255,255,255,0.05)', color: '#64748B', tickfont: { size: 9 }, tickangle: ep.agents.length > 3 ? -30 : 0 },
+    yaxis: { gridcolor: 'rgba(255,255,255,0.05)', color: '#64748B', title: { text: 'Units', font: { size: 10 } } },
     hovermode: 'closest',
     hoverlabel: { bgcolor: '#141820', bordercolor: '#60A5FA', font: { family: 'JetBrains Mono', color: '#F1F5F9', size: 11 } },
   }, PLY_CFG);
 }
 
-/* ════════════ DETECTION STATUS (animated rows) ════════════ */
 function animateDetectionStatus(ep, onDone) {
   const isCoalition = ep.gt_type === 'coalition';
   const didFlag = ep.overseer_output.type === 'overseer_flag';
@@ -595,10 +535,10 @@ function animateDetectionStatus(ep, onDone) {
 
   const rows = [
     { key: 'Ground Truth', val: isCoalition ? 'Coalition Exists' : 'No Coalition', color: isCoalition ? '#F87171' : '#34D399' },
-    { key: 'Overseer',     val: didFlag ? 'Flag: ' + ep.overseer_output.target_agent : 'Pass', color: didFlag ? '#F87171' : '#34D399' },
-    { key: 'Outcome',      val: correct ? '✓ CORRECT' : '✗ INCORRECT', color: correct ? '#34D399' : '#F87171' },
-    { key: 'Reward',       val: (ep.reward >= 0 ? '+' : '') + ep.reward.toFixed(4), color: ep.reward > 0 ? '#34D399' : '#F87171' },
-    { key: 'GRPO Step',    val: 'Step ' + ep.grpo_step.step, color: '#60A5FA' },
+    { key: 'Overseer', val: didFlag ? 'Flag: ' + ep.overseer_output.target_agent : 'Pass', color: didFlag ? '#F87171' : '#34D399' },
+    { key: 'Outcome', val: correct ? '✓ CORRECT' : '✗ INCORRECT', color: correct ? '#34D399' : '#F87171' },
+    { key: 'Reward', val: (ep.reward >= 0 ? '+' : '') + ep.reward.toFixed(4), color: ep.reward > 0 ? '#34D399' : '#F87171' },
+    { key: 'GRPO Step', val: 'Step ' + ep.grpo_step.step, color: '#60A5FA' },
     { key: 'Train Reward', val: ep.grpo_step.reward.toFixed(4), color: '#22D3EE' },
   ];
 
@@ -614,11 +554,10 @@ function animateDetectionStatus(ep, onDone) {
     setTimeout(() => {
       el.classList.add('visible');
       if (i === rows.length - 1) setTimeout(onDone, 200);
-    }, i * 120);
+    }, i * 100);
   });
 }
 
-/* ════════════ VERDICT ════════════ */
 function renderVerdict(ep) {
   const isCoalition = ep.gt_type === 'coalition';
   const didFlag = ep.overseer_output.type === 'overseer_flag';
@@ -626,17 +565,17 @@ function renderVerdict(ep) {
   const fp = (!isCoalition && didFlag) ? 1 : 0;
   const fn = (isCoalition && !didFlag) ? 1 : 0;
   const prec = tp / (tp + fp + 1e-9);
-  const rec  = tp / (tp + fn + 1e-9);
-  const f1   = 2 * prec * rec / (prec + rec + 1e-9);
+  const rec = tp / (tp + fn + 1e-9);
+  const f1 = 2 * prec * rec / (prec + rec + 1e-9);
 
   const vals = [
-    { key: 'GT Type',    val: ep.gt_type,    color: isCoalition ? '#F87171' : '#34D399' },
+    { key: 'GT Type', val: ep.gt_type, color: isCoalition ? '#F87171' : '#34D399' },
     { key: 'GT Members', val: ep.gt_members.map(a => a.replace('negotiator_','')).join(', ') || 'None', color: '#94A3B8' },
-    { key: 'Flagged',    val: ep.overseer_output.coalition_members?.map(a => a.replace('negotiator_','')).join(', ') || 'None', color: didFlag ? '#F87171' : '#34D399' },
-    { key: 'TP',  val: tp, color: tp > 0 ? '#34D399' : '#64748B' },
-    { key: 'FP',  val: fp, color: fp > 0 ? '#F87171' : '#64748B' },
-    { key: 'FN',  val: fn, color: fn > 0 ? '#FBBF24' : '#64748B' },
-    { key: 'F1',  val: isNaN(f1) ? 'N/A' : f1.toFixed(2), color: f1 > 0.5 ? '#34D399' : '#F87171' },
+    { key: 'Flagged', val: ep.overseer_output.coalition_members?.map(a => a.replace('negotiator_','')).join(', ') || 'None', color: didFlag ? '#F87171' : '#34D399' },
+    { key: 'TP', val: tp, color: tp > 0 ? '#34D399' : '#64748B' },
+    { key: 'FP', val: fp, color: fp > 0 ? '#F87171' : '#64748B' },
+    { key: 'FN', val: fn, color: fn > 0 ? '#FBBF24' : '#64748B' },
+    { key: 'F1', val: isNaN(f1) ? 'N/A' : f1.toFixed(2), color: f1 > 0.5 ? '#34D399' : '#F87171' },
   ];
 
   const grid = document.getElementById('verdict-grid');
@@ -650,124 +589,49 @@ function renderVerdict(ep) {
   const verdict = document.getElementById('verdict-card');
   setTimeout(() => {
     verdict.classList.add('visible');
-    // Animate each vg-item
     document.querySelectorAll('.vg-item').forEach((el, i) => {
-      setTimeout(() => { el.classList.add('visible'); }, i * 80);
+      setTimeout(() => { el.classList.add('visible'); }, i * 70);
     });
   }, 100);
 }
 
-/* ════════════ ANALYTICS PAGE ════════════ */
+/* ════════════ ANALYTICS PAGE RENDERING ════════════ */
 function renderAnalytics() {
   document.getElementById('analytics-gate').style.display = 'none';
   document.getElementById('analytics-charts').style.display = 'block';
 
-  const steps  = GRPO_DATA.map(d => d.step);
+  const steps = GRPO_DATA.map(d => d.step);
   const reward = GRPO_DATA.map(d => d.reward);
-  const std    = GRPO_DATA.map(d => d.reward_std);
-  const kl     = GRPO_DATA.map(d => d.kl);
-  const loss   = GRPO_DATA.map(d => d.loss);
-  const upper  = reward.map((r, i) => r + std[i]);
-  const lower  = reward.map((r, i) => r - std[i]);
+  const std = GRPO_DATA.map(d => d.reward_std);
+  const kl = GRPO_DATA.map(d => d.kl);
+  const loss = GRPO_DATA.map(d => d.loss);
+  const upper = reward.map((r, i) => r + std[i]);
+  const lower = reward.map((r, i) => r - std[i]);
 
-  // Reward chart
   Plotly.newPlot('chart-reward-main', [
-    {
-      x: [...steps, ...steps.slice().reverse()],
-      y: [...upper, ...lower.slice().reverse()],
-      fill: 'toself', fillcolor: 'rgba(96,165,250,0.07)',
-      line: { width: 0 }, showlegend: false, hoverinfo: 'skip', type: 'scatter'
-    },
-    {
-      x: steps, y: reward, mode: 'lines+markers', name: 'GRPO',
-      line: { color: '#60A5FA', width: 2, shape: 'spline' },
-      marker: { color: '#60A5FA', size: 3 },
-      hovertemplate: 'Step %{x}: <b>%{y:.3f}</b><extra>GRPO</extra>'
-    },
-    {
-      x: RLVR_DATA.steps, y: RLVR_DATA.reward_mean, mode: 'lines', name: 'RLVR',
-      line: { color: '#34D399', width: 2, dash: 'dot' },
-      hovertemplate: 'Step %{x}: <b>%{y:.3f}</b><extra>RLVR</extra>'
-    },
-  ], {
-    ...BASE,
-    xaxis: ax('Step'),
-    yaxis: { ...ax('Reward', '#60A5FA'), zeroline: true },
-    shapes: [{
-      type: 'line', x0: steps[0], x1: steps[steps.length - 1], y0: 0.5, y1: 0.5,
-      line: { color: 'rgba(52,211,153,0.3)', width: 1, dash: 'dash' }
-    }]
-  }, PLY_CFG);
+    { x: [...steps, ...steps.slice().reverse()], y: [...upper, ...lower.slice().reverse()], fill: 'toself', fillcolor: 'rgba(96,165,250,0.07)', line: { width: 0 }, showlegend: false, hoverinfo: 'skip', type: 'scatter' },
+    { x: steps, y: reward, mode: 'lines+markers', name: 'GRPO', line: { color: '#60A5FA', width: 2, shape: 'spline' }, marker: { color: '#60A5FA', size: 3 }, hovertemplate: 'Step %{x}: <b>%{y:.3f}</b><extra>GRPO</extra>' },
+    { x: RLVR_DATA.steps, y: RLVR_DATA.reward_mean, mode: 'lines', name: 'RLVR', line: { color: '#34D399', width: 2, dash: 'dot' }, hovertemplate: 'Step %{x}: <b>%{y:.3f}</b><extra>RLVR</extra>' },
+  ], { ...BASE, xaxis: ax('Step'), yaxis: { ...ax('Reward', '#60A5FA'), zeroline: true }, shapes: [{ type: 'line', x0: steps[0], x1: steps[steps.length - 1], y0: 0.5, y1: 0.5, line: { color: 'rgba(52,211,153,0.3)', width: 1, dash: 'dash' } }] }, PLY_CFG);
 
-  // KL chart
   Plotly.newPlot('chart-kl', [
-    {
-      x: steps, y: kl, mode: 'lines+markers', name: 'GRPO KL',
-      line: { color: '#FBBF24', width: 2, shape: 'spline' },
-      marker: { size: 3, color: '#FBBF24' },
-      hovertemplate: 'Step %{x}: <b>%{y:.5f}</b><extra>GRPO</extra>'
-    },
-    {
-      x: RLVR_DATA.steps, y: RLVR_DATA.kl, mode: 'lines', name: 'RLVR KL',
-      line: { color: '#22D3EE', width: 1.5, dash: 'dot' },
-      hovertemplate: 'Step %{x}: <b>%{y:.5f}</b><extra>RLVR</extra>'
-    },
+    { x: steps, y: kl, mode: 'lines+markers', name: 'GRPO KL', line: { color: '#FBBF24', width: 2, shape: 'spline' }, marker: { size: 3, color: '#FBBF24' }, hovertemplate: 'Step %{x}: <b>%{y:.5f}</b><extra>GRPO</extra>' },
+    { x: RLVR_DATA.steps, y: RLVR_DATA.kl, mode: 'lines', name: 'RLVR KL', line: { color: '#22D3EE', width: 1.5, dash: 'dot' }, hovertemplate: 'Step %{x}: <b>%{y:.5f}</b><extra>RLVR</extra>' },
   ], { ...BASE, xaxis: ax('Step'), yaxis: ax('KL Divergence', '#FBBF24') }, PLY_CFG);
 
-  // Loss chart
-  Plotly.newPlot('chart-loss', [{
-    x: steps, y: loss, mode: 'lines+markers', name: 'Train Loss',
-    line: { color: '#F87171', width: 2, shape: 'spline' },
-    marker: { size: 3, color: '#F87171' },
-    hovertemplate: 'Step %{x}: <b>%{y:.4f}</b><extra></extra>',
-  }], { ...BASE, xaxis: ax('Step'), yaxis: ax('Loss', '#F87171') }, PLY_CFG);
+  Plotly.newPlot('chart-loss', [{ x: steps, y: loss, mode: 'lines+markers', name: 'Train Loss', line: { color: '#F87171', width: 2, shape: 'spline' }, marker: { size: 3, color: '#F87171' }, hovertemplate: 'Step %{x}: <b>%{y:.4f}</b><extra></extra>' }], { ...BASE, xaxis: ax('Step'), yaxis: ax('Loss', '#F87171') }, PLY_CFG);
 
-  // Std chart
-  Plotly.newPlot('chart-std', [{
-    x: steps, y: std, type: 'bar', name: 'Reward Std',
-    marker: { color: std.map(v => v > 0.3 ? '#F87171' : '#60A5FA'), opacity: 0.8 },
-    hovertemplate: 'Step %{x}: std=<b>%{y:.4f}</b><extra></extra>',
-  }], { ...BASE, xaxis: ax('Step'), yaxis: ax('Std Dev', '#60A5FA') }, PLY_CFG);
+  Plotly.newPlot('chart-std', [{ x: steps, y: std, type: 'bar', name: 'Reward Std', marker: { color: std.map(v => v > 0.3 ? '#F87171' : '#60A5FA'), opacity: 0.8 }, hovertemplate: 'Step %{x}: std=<b>%{y:.4f}</b><extra></extra>' }], { ...BASE, xaxis: ax('Step'), yaxis: ax('Std Dev', '#60A5FA') }, PLY_CFG);
 
-  // Performance bar
   const p = PERFORMANCE;
   const colors = ['#64748B', '#FBBF24', '#60A5FA', '#34D399'];
   const metrics = ['Precision', 'Recall', 'F1'];
   const perfVals = [p.precision, p.recall, p.f1];
 
-  Plotly.newPlot('chart-perf-bar',
-    p.methods.map((m, i) => ({
-      name: m, x: metrics, y: metrics.map((_, mi) => perfVals[mi][i]),
-      type: 'bar', marker: { color: colors[i], opacity: 0.85 },
-      hovertemplate: `<b>${m}</b><br>%{x}: %{y:.2f}<extra></extra>`,
-    })),
-    { ...BASE, barmode: 'group', xaxis: ax('Metric'), yaxis: { ...ax('Score'), range: [0, 1] } },
-    PLY_CFG
-  );
+  Plotly.newPlot('chart-perf-bar', p.methods.map((m, i) => ({ name: m, x: metrics, y: metrics.map((_, mi) => perfVals[mi][i]), type: 'bar', marker: { color: colors[i], opacity: 0.85 }, hovertemplate: `<b>${m}</b><br>%{x}: %{y:.2f}<extra></extra>` })), { ...BASE, barmode: 'group', xaxis: ax('Metric'), yaxis: { ...ax('Score'), range: [0, 1] } }, PLY_CFG);
 
-  // Radar chart
-  Plotly.newPlot('chart-radar',
-    p.methods.map((m, i) => ({
-      type: 'scatterpolar',
-      r: [p.precision[i], p.recall[i], p.f1[i], p.precision[i]],
-      theta: ['Precision', 'Recall', 'F1', 'Precision'],
-      fill: 'toself', name: m,
-      line: { color: colors[i], width: 2 },
-      fillcolor: colors[i] + '28',
-      hovertemplate: `<b>${m}</b><br>%{theta}: %{r:.2f}<extra></extra>`,
-    })),
-    {
-      ...BASE,
-      polar: {
-        bgcolor: 'rgba(255,255,255,0.02)',
-        radialaxis: { visible: true, range: [0, 1], gridcolor: 'rgba(255,255,255,0.07)', color: '#64748B', tickfont: { size: 10 } },
-        angularaxis: { gridcolor: 'rgba(255,255,255,0.07)', color: '#64748B' },
-      },
-      margin: { t: 30, r: 40, b: 30, l: 40 },
-    }, PLY_CFG
-  );
+  Plotly.newPlot('chart-radar', p.methods.map((m, i) => ({ type: 'scatterpolar', r: [p.precision[i], p.recall[i], p.f1[i], p.precision[i]], theta: ['Precision', 'Recall', 'F1', 'Precision'], fill: 'toself', name: m, line: { color: colors[i], width: 2 }, fillcolor: colors[i] + '28', hovertemplate: `<b>${m}</b><br>%{theta}: %{r:.2f}<extra></extra>` })), { ...BASE, polar: { bgcolor: 'rgba(255,255,255,0.02)', radialaxis: { visible: true, range: [0, 1], gridcolor: 'rgba(255,255,255,0.07)', color: '#64748B', tickfont: { size: 10 } }, angularaxis: { gridcolor: 'rgba(255,255,255,0.07)', color: '#64748B' } }, margin: { t: 30, r: 40, b: 30, l: 40 } }, PLY_CFG);
 
-  // Table
   const tbody = document.getElementById('perf-tbody');
   const winnerIdx = p.f1.indexOf(Math.max(...p.f1));
   tbody.innerHTML = p.methods.map((m, i) => {
@@ -784,9 +648,8 @@ function renderAnalytics() {
       <td class="${isWinner ? 'status-winner' : 'status-baseline'}">${isWinner ? 'Winner' : i === 0 ? 'Baseline' : i === 1 ? 'Baseline' : 'Improved'}</td>
     </tr>`;
   }).join('');
-
   document.getElementById('winner-badge').textContent = 'Winner: ' + p.methods[winnerIdx];
 }
 
-/* ════════════ INIT ════════════ */
+/* ════════════ INITIALIZATION ════════════ */
 updateDiffInfo('medium');
