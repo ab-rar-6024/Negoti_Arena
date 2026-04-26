@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+wandb/
+.env
+server/__pycache__/
+training/__pycache__/
